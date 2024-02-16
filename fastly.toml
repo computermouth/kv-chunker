@@ -1,0 +1,18 @@
+# This file describes a Fastly Compute@Edge package. To learn more visit:
+# https://developer.fastly.com/reference/fastly-toml/
+
+authors = ["benjaminzyoung@gmail.com"]
+description = ""
+language = "rust"
+manifest_version = 3
+name = "kv-chunker"
+service_id = "x8tX46P2kUtfVjBG0vbHG5"
+
+[local_server]
+  [local_server.kv_stores]
+    [[local_server.kv_stores.chunkstore]]
+      key = "ok_pcs"
+      data = "1"
+    [[local_server.kv_stores.chunkstore]]
+      key = "ok_0"
+      file = "./file"
