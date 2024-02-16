@@ -46,7 +46,7 @@ This password gets embedded in the application. As there's no rate limiting invo
 ## recommended usage
 
 0. (create fastly account, create a kv store)
-1. set `PASSWORD``, enable the `PUT` path in `main.rs`
+1. set `PASSWORD`, enable the `PUT` path in `main.rs`
 2a. deploy
 2b. (link your kv store with the compute service)
 3. use uploader `$ ./uploader.sh myfile ${PASSWORD}`
