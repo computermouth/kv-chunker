@@ -1,23 +1,51 @@
-# Default Starter Kit for Rust
+# kv-chunker
 
-[![Deploy to Fastly](https://deploy.edgecompute.app/button)](https://deploy.edgecompute.app/deploy)
+A fastly compute app which stitches together bodies of chunked artifacts for bulk hosted files in KVStore.
 
-Get to know the Fastly Compute environment with a basic starter that demonstrates routing, simple synthetic responses and code comments that cover common patterns.
+## how does it work
 
-**For more details about this and other starter kits for Compute, see the [Fastly Developer Hub](https://developer.fastly.com/solutions/starters/)**.
+A given file is chunked into 25MiB segments with the `uploader.sh` script, and is `PUT` in the KVStore along with a metadata file which just states how many chunks exist. Example:
 
-## Features
+```
+$ ls -lsah myfile
+48M myfile
+$ stat --printf="%s" myfile 
+50000000
+$ ./uploader.sh myfile ${PASSWORD} ## PASSWORD must be set in src/pw.rs
+```
 
-- Allow only requests with particular HTTP methods
-- Match request URL path and methods for routing
-- Build synthetic responses at the edge
+With this particular file, 3 files will be inserted in your fastly KVStore
+```
+└── mykvstore
+    ├── myfile_pcs
+    ├── myfile_0
+    └── myfile_1
+```
 
-## Understanding the code
+`myfile_pcs` contains a printable text number of the chunks. In this case: 2.
+`myfile_0` is the first 25MiB(26214400B) of `myfile`
+`myfile_1` is the remaining ~23MiB(23785600B) of `myfile`
 
-This starter is intentionally lightweight, and requires no dependencies aside from the [`fastly`](https://docs.rs/fastly) crate. It will help you understand the basics of processing requests at the edge using Fastly. This starter includes implementations of common patterns explained in our [using Compute](https://developer.fastly.com/learning/compute/rust/) and [VCL migration](https://developer.fastly.com/learning/compute/migrate/) guides.
+Larger files will be `n` number of chunks, with the final chunk always being `${FILE_SIZE_IN_BYTES} % 26214400` bytes long.
 
-The starter doesn't require the use of any backends. Once deployed, you will have a Fastly service running on Compute that can generate synthetic responses at the edge.
+## getting started
 
-## Security issues
+Create a file `src/pw.rs`, and add the following
 
-Please see [SECURITY.md](SECURITY.md) for guidance on reporting security-related issues.
+```
+pub const PASSWORD: &str = "mysupersecretpassword";
+```
+
+`DISCLAIMER`
+This password gets embedded in the application. As there's no rate limiting involved in the application, this is incredibly susceptible to a brute force attack. If used in any production scenario, at a minimum, please please please disable the `put()` logic once you're done with your uploads, or better yet, devise an actual authentication mechanism.
+
+## recommended usage
+
+0. (create fastly account, create a kv store)
+1. set `PASSWORD``, enable the `PUT` path in `main.rs`
+2a. deploy
+2b. (link your kv store with the compute service)
+3. use uploader `$ ./uploader.sh myfile ${PASSWORD}`
+4. test your GET -- `curl -XGET https://your-app-subdomain.edgecompute.app/myfile -O`
+5. disable `PUT` path
+6. deploy
