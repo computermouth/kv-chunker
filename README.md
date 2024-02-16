@@ -28,6 +28,10 @@ With this particular file, 3 files will be inserted in your fastly KVStore
 
 Larger files will be `n` number of chunks, with the final chunk always being `${FILE_SIZE_IN_BYTES} % 26214400` bytes long.
 
+On GETs, `myfile_pcs` is fetched, and it's contents parsed. The compute app will create N number of lookups, and append the bodies to the outbound response body.
+
+`TODO` -- use lookup_async, and gather a vector of handles, before waiting on all of them. (Currently a bug preventing this where PendingInsertHandle is not exported correctly).
+
 ## getting started
 
 Create a file `src/pw.rs`, and add the following
