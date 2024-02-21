@@ -1,11 +1,12 @@
 
 use fastly::http::{Method, StatusCode};
 use fastly::{Error, Request, Response};
-use fastly::kv_store::KVStore;
+use fastly::kv_store::{KVStore, KVStoreError};
+use fastly::kv_store::handle::PendingObjectStoreLookupHandle;
 use fastly::Body;
 
 // pub const PASSWORD: &str = "yourpassword";
-mod pw;
+// mod pw;
 
 const STORE_NAME: &str = "chunkstore";
 
@@ -32,7 +33,6 @@ fn put(name: &str, pc: usize, pcs: usize, data: Vec<u8>) -> Result<Response, Err
 
 fn get(name: &str) -> Result<Response, Error> {
 
-    println!("ok1");
     let store = KVStore::open(STORE_NAME)?;
     if store.is_none() {
         return Ok(Response::from_status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -58,11 +58,15 @@ fn get(name: &str) -> Result<Response, Error> {
 
             let mut resbody = Body::new();
 
-            for i in 0..size {
+            let handles: Vec<PendingObjectStoreLookupHandle> = (0..size).into_iter().map(|i|{
                 let mut pc_key = name.to_string();
                 pc_key.push_str("_");
                 pc_key.push_str(&i.to_string());
-                let lookup = store.lookup(&pc_key);
+                store.lookup_async(&pc_key).unwrap().unwrap()
+            }).collect();
+
+            for (i, v) in handles.into_iter().enumerate() {
+                let lookup = store.pending_lookup_wait(v);
                 if lookup.is_err(){
                     return Ok(Response::from_status(StatusCode::INTERNAL_SERVER_ERROR)
                     .with_body_text_plain("couldn't parse size\n"));
@@ -78,6 +82,7 @@ fn get(name: &str) -> Result<Response, Error> {
             }
 
             let mut res = Response::from_status(StatusCode::OK);
+            res.set_header("version", "1");
             res.set_body(resbody);
             res.set_content_type(fastly::mime::APPLICATION_OCTET_STREAM);
 
